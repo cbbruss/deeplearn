@@ -4,8 +4,8 @@ import numpy as np
 from pandas.io.parsers import read_csv
 from sklearn.utils import shuffle
 
-FTRAIN = "~/cnntest2/data/training.csv"
-FTEST = "~/cnntest2/data/test.csv"
+FTRAIN = "~/cnntest/data/training.csv"
+FTEST = "~/cnntest/data/test.csv"
 
 def load(test=False,cols =None):
     """Loads data from FTEST if *test* is True, otherwise from FTRAIN.
