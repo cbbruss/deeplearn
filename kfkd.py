@@ -113,5 +113,4 @@ import cPickle as pickle
 with open('net2.pickle', 'wb') as f:
     pickle.dump(net2, f, -1)
 
-
     
