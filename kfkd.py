@@ -6,9 +6,37 @@ from sklearn.utils import shuffle
 from lasagne import layers
 from lasagne.updates import nesterov_momentum
 from nolearn.lasagne import NeuralNet
+from nolearn.lasagne import BatchIterator
 
 FTRAIN = "~/cnntest/data/training.csv"
 FTEST = "~/cnntest/data/test.csv"
+
+class FlipBatchIterator(BatchIterator):
+    flip_indices = [
+        (0, 2), (1, 3),
+        (4, 8), (5, 9), (6, 10), (7, 11),
+        (12, 16), (13, 17), (14, 18), (15, 19),
+        (22, 24), (23, 25),
+        ]
+
+    def transform(self, Xb, yb):
+        Xb, yb = super(FlipBatchIterator, self).transform(Xb, yb)
+
+        # Flip half of the images in this batch at random:
+        bs = Xb.shape[0]
+        indices = np.random.choice(bs, bs / 2, replace=False)
+        Xb[indices] = Xb[indices, :, :, ::-1]
+
+        if yb is not None:
+            # Horizontal flip of all x coordinates:
+            yb[indices, ::2] = yb[indices, ::2] * -1
+
+            # Swap places, e.g. left_eye_center_x -> right_eye_center_x
+            for a, b in self.flip_indices:
+                yb[indices, a], yb[indices, b] = (
+                    yb[indices, b], yb[indices, a])
+
+        return Xb, yb
 
 def load(test=False,cols =None):
     """Loads data from FTEST if *test* is True, otherwise from FTRAIN.
@@ -45,37 +73,75 @@ def load2d(test=False, cols=None):
     X = X.reshape(-1, 1, 96, 96)
     return X, y
 
-X,y = load()
-print("X.shape == {} X.min == {:.3f}; X.max == {:.3f}".format(X.shape,X.min(),X.max()))
-print("y.shape == {}; y.min == {:.3f}; y.max == {:.3f}".format(y.shape,y.min(),y.max()))
+# X,y = load()
+# print("X.shape == {} X.min == {:.3f}; X.max == {:.3f}".format(X.shape,X.min(),X.max()))
+# print("y.shape == {}; y.min == {:.3f}; y.max == {:.3f}".format(y.shape,y.min(),y.max()))
 
 
-net1 = NeuralNet(
-    layers = [# three layers: one hidden layer
-    ('input', layers.InputLayer),
-    ('hidden',layers.DenseLayer),
-    ('output', layers.DenseLayer),
-    ],
-    # Layer parameters
-    input_shape = (None, 9216), # 96 X 96 input pixels per batch
-    hidden_num_units = 100, # number of units in hidden layer
-    output_nonlinearity = None, # output Layer uses identity function
-    output_num_units = 30, # 30 target values
+# net1 = NeuralNet(
+#     layers = [# three layers: one hidden layer
+#     ('input', layers.InputLayer),
+#     ('hidden',layers.DenseLayer),
+#     ('output', layers.DenseLayer),
+#     ],
+#     # Layer parameters
+#     input_shape = (None, 9216), # 96 X 96 input pixels per batch
+#     hidden_num_units = 100, # number of units in hidden layer
+#     output_nonlinearity = None, # output Layer uses identity function
+#     output_num_units = 30, # 30 target values
     
-    # optimization method:
-    update = nesterov_momentum,
-    update_learning_rate = 0.01,
-    update_momentum = 0.9,
+#     # optimization method:
+#     update = nesterov_momentum,
+#     update_learning_rate = 0.01,
+#     update_momentum = 0.9,
     
-    regression=True, # flag to indicate we're dealing with regression problem
-    max_epochs=400, # we want to train this with many epochs
-    verbose = 1,
-    )
+#     regression=True, # flag to indicate we're dealing with regression problem
+#     max_epochs=400, # we want to train this with many epochs
+#     verbose = 1,
+#     )
 
-X,y = load()
-net1.fit(X,y)
+# X,y = load()
+# net1.fit(X,y)
 
-net2 = NeuralNet(
+# net2 = NeuralNet(
+#     layers=[
+#         ('input', layers.InputLayer),
+#         ('conv1', layers.Conv2DLayer),
+#         ('pool1', layers.MaxPool2DLayer),
+#         ('conv2', layers.Conv2DLayer),
+#         ('pool2', layers.MaxPool2DLayer),
+#         ('conv3', layers.Conv2DLayer),
+#         ('pool3', layers.MaxPool2DLayer),
+#         ('hidden4', layers.DenseLayer),
+#         ('hidden5', layers.DenseLayer),
+#         ('output', layers.DenseLayer),
+#         ],
+#     input_shape=(None, 1, 96, 96),
+#     conv1_num_filters=32, conv1_filter_size=(3, 3), pool1_pool_size=(2, 2),
+#     conv2_num_filters=64, conv2_filter_size=(2, 2), pool2_pool_size=(2, 2),
+#     conv3_num_filters=128, conv3_filter_size=(2, 2), pool3_pool_size=(2, 2),
+#     hidden4_num_units=500, hidden5_num_units=500,
+#     output_num_units=30, output_nonlinearity=None,
+
+#     update_learning_rate=0.01,
+#     update_momentum=0.9,
+
+#     regression=True,
+#     max_epochs=1000,
+#     verbose=1,
+#     )
+
+# X, y = load2d()  # load 2-d data
+# net2.fit(X, y)
+
+    
+# # Training for 1000 epochs will take a while.  We'll pickle the
+# # trained model so that we can load it back later:
+# import cPickle as pickle
+# with open('net2.pickle', 'wb') as f:
+#     pickle.dump(net2, f, -1)
+
+net3 = NeuralNet(
     layers=[
         ('input', layers.InputLayer),
         ('conv1', layers.Conv2DLayer),
@@ -99,18 +165,16 @@ net2 = NeuralNet(
     update_momentum=0.9,
 
     regression=True,
-    max_epochs=1000,
+    batch_iterator_train=FlipBatchIterator(batch_size=128),
+    max_epochs=3000,
     verbose=1,
     )
 
-X, y = load2d()  # load 2-d data
-net2.fit(X, y)
+X, y = load2d()
 
-    
-# Training for 1000 epochs will take a while.  We'll pickle the
-# trained model so that we can load it back later:
+net3.fit(X, y)
+
 import cPickle as pickle
-with open('net2.pickle', 'wb') as f:
-    pickle.dump(net2, f, -1)
-
+with open('net3.pickle', 'wb') as f:
+    pickle.dump(net3, f, -1)
     
