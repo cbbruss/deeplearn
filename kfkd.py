@@ -7,6 +7,7 @@ from lasagne import layers
 from lasagne.updates import nesterov_momentum
 from nolearn.lasagne import NeuralNet
 from nolearn.lasagne import BatchIterator
+import theano
 
 FTRAIN = "~/cnntest/data/training.csv"
 FTEST = "~/cnntest/data/test.csv"
@@ -37,6 +38,10 @@ class FlipBatchIterator(BatchIterator):
                     yb[indices, b], yb[indices, a])
 
         return Xb, yb
+
+def float32(k):
+    return np.cast['float32'](k)
+
 
 def load(test=False,cols =None):
     """Loads data from FTEST if *test* is True, otherwise from FTRAIN.
@@ -141,7 +146,44 @@ def load2d(test=False, cols=None):
 # with open('net2.pickle', 'wb') as f:
 #     pickle.dump(net2, f, -1)
 
-net3 = NeuralNet(
+# net3 = NeuralNet(
+#     layers=[
+#         ('input', layers.InputLayer),
+#         ('conv1', layers.Conv2DLayer),
+#         ('pool1', layers.MaxPool2DLayer),
+#         ('conv2', layers.Conv2DLayer),
+#         ('pool2', layers.MaxPool2DLayer),
+#         ('conv3', layers.Conv2DLayer),
+#         ('pool3', layers.MaxPool2DLayer),
+#         ('hidden4', layers.DenseLayer),
+#         ('hidden5', layers.DenseLayer),
+#         ('output', layers.DenseLayer),
+#         ],
+#     input_shape=(None, 1, 96, 96),
+#     conv1_num_filters=32, conv1_filter_size=(3, 3), pool1_pool_size=(2, 2),
+#     conv2_num_filters=64, conv2_filter_size=(2, 2), pool2_pool_size=(2, 2),
+#     conv3_num_filters=128, conv3_filter_size=(2, 2), pool3_pool_size=(2, 2),
+#     hidden4_num_units=500, hidden5_num_units=500,
+#     output_num_units=30, output_nonlinearity=None,
+
+#     update_learning_rate=0.01,
+#     update_momentum=0.9,
+
+#     regression=True,
+#     batch_iterator_train=FlipBatchIterator(batch_size=128),
+#     max_epochs=3000,
+#     verbose=1,
+#     )
+
+# X, y = load2d()
+
+# net3.fit(X, y)
+
+# import cPickle as pickle
+# with open('net3.pickle', 'wb') as f:
+#     pickle.dump(net3, f, -1)
+
+net4 = NeuralNet(
     layers=[
         ('input', layers.InputLayer),
         ('conv1', layers.Conv2DLayer),
@@ -161,8 +203,8 @@ net3 = NeuralNet(
     hidden4_num_units=500, hidden5_num_units=500,
     output_num_units=30, output_nonlinearity=None,
 
-    update_learning_rate=0.01,
-    update_momentum=0.9,
+    update_learning_rate=theano.shared(float32(0.03)),
+    update_momentum=theano.shared(float32(0.9)),
 
     regression=True,
     batch_iterator_train=FlipBatchIterator(batch_size=128),
@@ -172,9 +214,8 @@ net3 = NeuralNet(
 
 X, y = load2d()
 
-net3.fit(X, y)
+net4.fit(X, y)
 
 import cPickle as pickle
-with open('net3.pickle', 'wb') as f:
-    pickle.dump(net3, f, -1)
-    
+with open('net4.pickle', 'wb') as f:
+    pickle.dump(net4, f, -1)
